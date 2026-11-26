@@ -1,0 +1,15 @@
+# CI du homelab : chaque PR est vérifiée contre les règles réelles des clusters, dans un cluster k3d jetable.
+# Consultatif : une CI verte ne garantit pas l'admission (gVisor, SealedSecret, écarts accordés à votre équipe).
+name: homelab
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  homelab:
+    # Épinglé par SHA ; version-kit = le même SHA (un workflow réutilisable ne connaît pas sa propre version).
+    # PR DEPENDABOT : elle ne change que uses: ; recopiez le même SHA dans version-kit, sinon la CI échoue
+    # (« Mettez version-kit au même SHA que uses: »).
+    uses: aslon/homelab-tenant-kit/.github/workflows/verifier.yml@fc4b85104149df2f3a873a6967d612f8d32be1af # v1.3.0
+    with:
+      team: monequipe
+      version-kit: fc4b85104149df2f3a873a6967d612f8d32be1af # v1.3.0

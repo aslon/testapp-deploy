@@ -1,0 +1,5 @@
+# Modèle d'équipe du homelab (aslon/homelab-tenant-template). Personnalisé par ./init.sh <équipe> [app].
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - app.yaml
