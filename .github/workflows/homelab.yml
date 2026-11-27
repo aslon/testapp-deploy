@@ -11,5 +11,5 @@ jobs:
     # (« Mettez version-kit au même SHA que uses: »).
     uses: aslon/homelab-tenant-kit/.github/workflows/verifier.yml@fc4b85104149df2f3a873a6967d612f8d32be1af # v1.3.0
     with:
-      team: monequipe
+      team: testapp
       version-kit: fc4b85104149df2f3a873a6967d612f8d32be1af # v1.3.0
