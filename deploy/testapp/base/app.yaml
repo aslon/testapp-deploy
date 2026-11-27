@@ -1,0 +1,107 @@
+# Modèle d'équipe du homelab (aslon/homelab-tenant-template), adapté pour testapp (Django + SQLite).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: testapp-donnees
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false # base SQLite : ne jamais supprimer avec le dépôt
+spec:
+  storageClassName: tenant-local  # obligatoire
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testapp
+  labels:
+    app: testapp                  # label app obligatoire
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                # volume ReadWriteOnce + SQLite : un seul pod à la fois
+  selector:
+    matchLabels:
+      app: testapp
+  template:
+    metadata:
+      labels:
+        app: testapp
+    spec:
+      runtimeClassName: gvisor    # obligatoire
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000             # le volume devient inscriptible par l'utilisateur 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          # nom seul : la version (tag et digest) est fixée par dev/ et prod/ (images:)
+          image: testapp
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DJANGO_ALLOWED_HOSTS
+              value: testapp-dev.alson-lab.fr,testapp.alson-lab.fr,localhost
+            - name: DJANGO_CSRF_TRUSTED_ORIGINS
+              value: https://testapp-dev.alson-lab.fr,https://testapp.alson-lab.fr
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+              ephemeral-storage: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
+          volumeMounts:
+            - name: donnees
+              mountPath: /data
+      volumes:
+        - name: donnees
+          persistentVolumeClaim:
+            claimName: testapp-donnees
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: testapp
+spec:
+  selector:
+    app: testapp
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: testapp
+spec:
+  ingressClassName: traefik       # obligatoire
+  rules:
+    - host: HOTE                  # remplacé par dev/ et prod/
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: testapp
+                port:
+                  number: 80
